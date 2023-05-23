@@ -29,6 +29,9 @@ from pytorch_fid.inception import InceptionV3
 from pytorch_fid.fid_score import calculate_frechet_distance
 
 from denoising_diffusion_pytorch.version import __version__
+from denoising_diffusion_pytorch.coefficient import coefficient
+
+
 
 # constants
 
@@ -770,14 +773,29 @@ class GaussianDiffusion(nn.Module):
         loss = reduce(loss, 'b ... -> b (...)', 'mean')
 
         loss = loss * extract(self.loss_weight, t, loss.shape)
-        return loss.mean()
+
+
+        loss = loss.reshape(-1, 4)
+        coeff = coefficient("m4.pt")
+        loss_coeff = coeff.approximate(loss)
+        return loss_coeff.mean()
+        #return loss.mean()
 
     def forward(self, img, *args, **kwargs):
         b, c, h, w, device, img_size, = *img.shape, img.device, self.image_size
         assert h == img_size and w == img_size, f'height and width of image must be {img_size}'
-        t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
 
+
+        #t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
+        # img = self.normalize(img)
+
+        #####
+        t = torch.randint(0, self.num_timesteps, (4 * b,), device=device).long()
+        img_ = img.repeat(1, 4, 1, 1)
+        img = img_.reshape(4 * b, c, h, w)
         img = self.normalize(img)
+        #####
+
         return self.p_losses(img, t, *args, **kwargs)
 
 # dataset classes

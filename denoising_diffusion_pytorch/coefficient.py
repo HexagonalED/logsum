@@ -11,9 +11,8 @@ class coefficient(nn.Module):
         self.n=n
         self.model = torch.jit.load("m"+n+".pt")
 
-    def __init__(self,n,path):
+    def __init__(self,path):
         super(coefficient,self).__init__()
-        self.n=n
         self.model = torch.jit.load(path)
 
     def predict(self,X_value):
@@ -23,6 +22,8 @@ class coefficient(nn.Module):
         return log_individual+log_constant
 
     def approximate(self,X_list):
+        print("approximiation start")
+        print(X_list)
         l = X_list.size(dim=0)
         ret = list(l)
         for t in range(l):

@@ -1,8 +1,5 @@
 import torch
 import torch.nn as nn
-import numpy
-import matplotlib
-import matplotlib.pyplot as plt
 
 
 class logSumCoefficient(nn.Module):

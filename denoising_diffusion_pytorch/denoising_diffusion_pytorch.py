@@ -27,11 +27,10 @@ from accelerate import Accelerator
 import numpy as np
 from pytorch_fid.inception import InceptionV3
 from pytorch_fid.fid_score import calculate_frechet_distance
-
-from denoising_diffusion_pytorch.version import __version__
-from denoising_diffusion_pytorch.coefficient import coefficient
-
-
+from denoising_diffusion_pytorch import coefficient
+#####
+#from denoising_diffusion_pytorch.version import __version__  #pip 안하기 위해 주석 처리
+#####
 
 # constants
 
@@ -452,12 +451,15 @@ class GaussianDiffusion(nn.Module):
         image_size,
         timesteps = 1000,
         sampling_timesteps = None,
-        loss_type = 'l1',
-        objective = 'pred_noise',
+        #####
+        #objective = 'pred_v',
+        objective = 'pred_noise', #기존과 비슷하게 하기 위해 수정
+        #####
         beta_schedule = 'sigmoid',
         schedule_fn_kwargs = dict(),
         ddim_sampling_eta = 0.,
         auto_normalize = True,
+        offset_noise_strength = 0.,  # https://www.crosslabs.org/blog/diffusion-with-offset-noise
         min_snr_loss_weight = False, # https://arxiv.org/abs/2303.09556
         min_snr_gamma = 5
     ):
@@ -493,7 +495,6 @@ class GaussianDiffusion(nn.Module):
 
         timesteps, = betas.shape
         self.num_timesteps = int(timesteps)
-        self.loss_type = loss_type
 
         # sampling related parameters
 
@@ -533,6 +534,10 @@ class GaussianDiffusion(nn.Module):
         register_buffer('posterior_mean_coef1', betas * torch.sqrt(alphas_cumprod_prev) / (1. - alphas_cumprod))
         register_buffer('posterior_mean_coef2', (1. - alphas_cumprod_prev) * torch.sqrt(alphas) / (1. - alphas_cumprod))
 
+        # offset noise strength - in blogpost, they claimed 0.1 was ideal
+
+        self.offset_noise_strength = offset_noise_strength
+
         # derive loss weight
         # snr - signal noise ratio
 
@@ -555,6 +560,10 @@ class GaussianDiffusion(nn.Module):
 
         self.normalize = normalize_to_neg_one_to_one if auto_normalize else identity
         self.unnormalize = unnormalize_to_zero_to_one if auto_normalize else identity
+
+    @property
+    def device(self):
+        return self.betas.device
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
@@ -626,8 +635,8 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample(self, x, t: int, x_self_cond = None):
-        b, *_, device = *x.shape, x.device
-        batched_times = torch.full((b,), t, device = x.device, dtype = torch.long)
+        b, *_, device = *x.shape, self.device
+        batched_times = torch.full((b,), t, device = device, dtype = torch.long)
         model_mean, _, model_log_variance, x_start = self.p_mean_variance(x = x, t = batched_times, x_self_cond = x_self_cond, clip_denoised = True)
         noise = torch.randn_like(x) if t > 0 else 0. # no noise if t == 0
         pred_img = model_mean + (0.5 * model_log_variance).exp() * noise
@@ -635,7 +644,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample_loop(self, shape, return_all_timesteps = False):
-        batch, device = shape[0], self.betas.device
+        batch, device = shape[0], self.device
 
         img = torch.randn(shape, device = device)
         imgs = [img]
@@ -654,7 +663,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def ddim_sample(self, shape, return_all_timesteps = False):
-        batch, device, total_timesteps, sampling_timesteps, eta, objective = shape[0], self.betas.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+        batch, device, total_timesteps, sampling_timesteps, eta, objective = shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
 
         times = torch.linspace(-1, total_timesteps - 1, steps = sampling_timesteps + 1)   # [-1, 0, 1, 2, ..., T-1] when sampling_timesteps == total_timesteps
         times = list(reversed(times.int().tolist()))
@@ -720,7 +729,7 @@ class GaussianDiffusion(nn.Module):
 
         return img
 
-    def q_sample(self, x_start, t, noise=None):
+    def q_sample(self, x_start, t, noise = None):
         noise = default(noise, lambda: torch.randn_like(x_start))
 
         return (
@@ -728,18 +737,18 @@ class GaussianDiffusion(nn.Module):
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
         )
 
-    @property
-    def loss_fn(self):
-        if self.loss_type == 'l1':
-            return F.l1_loss
-        elif self.loss_type == 'l2':
-            return F.mse_loss
-        else:
-            raise ValueError(f'invalid loss type {self.loss_type}')
-
-    def p_losses(self, x_start, t, noise = None):
+    def p_losses(self, x_start, t, noise = None, offset_noise_strength = None):
         b, c, h, w = x_start.shape
+
         noise = default(noise, lambda: torch.randn_like(x_start))
+
+        # offset noise - https://www.crosslabs.org/blog/diffusion-with-offset-noise
+
+        offset_noise_strength = default(offset_noise_strength, self.offset_noise_strength)
+
+        if offset_noise_strength > 0.:
+            offset_noise = torch.randn(x_start.shape[:2], device = self.device)
+            noise += offset_noise_strength * rearrange(offset_noise, 'b c -> b c 1 1')
 
         # noise sample
 
@@ -768,13 +777,13 @@ class GaussianDiffusion(nn.Module):
             target = v
         else:
             raise ValueError(f'unknown objective {self.objective}')
-
-        loss = self.loss_fn(model_out, target, reduction = 'none')
+        #####
+        #loss = F.mse_loss(model_out, target, reduction = 'none')
+        loss = F.l1_loss(model_out, target, reduction = 'none') #mse -> l1으로 수정
+        #####
         loss = reduce(loss, 'b ... -> b (...)', 'mean')
 
         loss = loss * extract(self.loss_weight, t, loss.shape)
-
-
         loss = loss.reshape(-1, 4)
         coeff = coefficient("m4.pt")
         loss_coeff = coeff.approximate(loss)
@@ -784,18 +793,15 @@ class GaussianDiffusion(nn.Module):
     def forward(self, img, *args, **kwargs):
         b, c, h, w, device, img_size, = *img.shape, img.device, self.image_size
         assert h == img_size and w == img_size, f'height and width of image must be {img_size}'
-
-
         #t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
-        # img = self.normalize(img)
 
+        #img = self.normalize(img)
         #####
         t = torch.randint(0, self.num_timesteps, (4 * b,), device=device).long()
         img_ = img.repeat(1, 4, 1, 1)
         img = img_.reshape(4 * b, c, h, w)
         img = self.normalize(img)
         #####
-
         return self.p_losses(img, t, *args, **kwargs)
 
 # dataset classes
@@ -848,7 +854,9 @@ class Trainer(object):
         ema_update_every = 10,
         ema_decay = 0.995,
         adam_betas = (0.9, 0.99),
-        save_and_sample_every = 1000,
+        #####
+        save_and_sample_every = 3500, #model sampling 빈도 조정
+        #####
         num_samples = 25,
         results_folder = './results',
         amp = False,
@@ -939,7 +947,9 @@ class Trainer(object):
             'opt': self.opt.state_dict(),
             'ema': self.ema.state_dict(),
             'scaler': self.accelerator.scaler.state_dict() if exists(self.accelerator.scaler) else None,
-            'version': __version__
+            #####
+            #'version': __version__ #pip 안하기 위해 주석 처리
+            #####
         }
 
         torch.save(data, str(self.results_folder / f'model-{milestone}.pt'))
@@ -1011,6 +1021,9 @@ class Trainer(object):
 
                 accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
                 pbar.set_description(f'loss: {total_loss:.4f}')
+                #####
+                #tl_list.append(total_loss)  #loss값 저장
+                #####
 
                 accelerator.wait_for_everyone()
 

@@ -5,14 +5,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-class coefficient(nn.Module):
+class logSumCoefficient(nn.Module):
     def __init__(self,n):
-        super(coefficient,self).__init__()
+        super(logSumCoefficient, self).__init__()
         self.n=n
         self.model = torch.jit.load("m"+n+".pt")
 
     def __init__(self,path):
-        super(coefficient,self).__init__()
+        super(logSumCoefficient, self).__init__()
         self.model = torch.jit.load(path)
 
     def predict(self,X_value):

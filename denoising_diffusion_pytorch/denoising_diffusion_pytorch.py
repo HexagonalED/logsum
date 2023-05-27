@@ -27,7 +27,7 @@ from accelerate import Accelerator
 import numpy as np
 from pytorch_fid.inception import InceptionV3
 from pytorch_fid.fid_score import calculate_frechet_distance
-from denoising_diffusion_pytorch import coefficient
+from denoising_diffusion_pytorch import logSumCoefficient
 #####
 #from denoising_diffusion_pytorch.version import __version__  #pip 안하기 위해 주석 처리
 #####
@@ -785,7 +785,7 @@ class GaussianDiffusion(nn.Module):
 
         loss = loss * extract(self.loss_weight, t, loss.shape)
         loss = loss.reshape(-1, 4)
-        coeff = coefficient("m4.pt")
+        coeff = logSumCoefficient("m4.pt")
         loss_coeff = coeff.approximate(loss)
         return loss_coeff.mean()
         #return loss.mean()

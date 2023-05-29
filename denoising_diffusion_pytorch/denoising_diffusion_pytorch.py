@@ -34,14 +34,14 @@ from pytorch_fid.fid_score import calculate_frechet_distance
 
 
 class logSumCoefficient(nn.Module):
-    def __init__(self,n):
+    def __init__(self,n,device):
         super(logSumCoefficient, self).__init__()
         self.n=n
-        self.model = torch.jit.load("m"+n+".pt")
+        self.model = torch.jit.load("m"+n+".pt").to(device)
 
-    def __init__(self,path):
+    def __init__(self,path,device):
         super(logSumCoefficient, self).__init__()
-        self.model = torch.jit.load(path)
+        self.model = torch.jit.load(path).to(device)
 
     def predict(self,X_value):
         pred=self.model(X_value)
@@ -814,7 +814,7 @@ class GaussianDiffusion(nn.Module):
 
         loss = loss * extract(self.loss_weight, t, loss.shape)
         loss = loss.reshape(-1, 4)
-        coeff = logSumCoefficient("m4.pt")
+        coeff = logSumCoefficient("m4.pt",self.device)
         loss_coeff = coeff.approximate(loss)
         return loss_coeff.mean()
         #return loss.mean()

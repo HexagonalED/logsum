@@ -810,7 +810,7 @@ class GaussianDiffusion(nn.Module):
         #loss = F.mse_loss(model_out, target, reduction = 'none')
         loss = F.l1_loss(model_out, target, reduction = 'none') #mse -> l1으로 수정
         #####
-        loss.requires_grad(True)
+        loss.requires_grad_(True)
         loss = reduce(loss, 'b ... -> b (...)', 'mean')
 
 

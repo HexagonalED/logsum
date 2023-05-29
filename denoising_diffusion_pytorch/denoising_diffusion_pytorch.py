@@ -38,20 +38,21 @@ class logSumCoefficient(nn.Module):
         super(logSumCoefficient, self).__init__()
         self.n=n
         self.model = torch.jit.load("m"+n+".pt").to(device)
+        self.model.eval()
 
     def __init__(self,path,device):
         super(logSumCoefficient, self).__init__()
         self.model = torch.jit.load(path).to(device)
+        self.model.eval()
 
     def predict(self,X_value):
+        print("predicting")
         pred=self.model(X_value)
         log_individual = torch.sum(torch.log(X_value) * pred[:-1])
         log_constant = pred[-1]
         return log_individual+log_constant
 
     def approximate(self,X_list):
-        print("approximiation start")
-        print(X_list)
         l = X_list.size(dim=0)
         ret = list()
         for t in range(l):

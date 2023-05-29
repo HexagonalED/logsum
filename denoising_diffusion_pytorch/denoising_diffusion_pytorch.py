@@ -53,7 +53,7 @@ class logSumCoefficient(nn.Module):
         print("approximiation start")
         print(X_list)
         l = X_list.size(dim=0)
-        ret = list(l)
+        ret = list()
         for t in range(l):
             ts=X_list[t]
             ret.append(self.predict(ts))

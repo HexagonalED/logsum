@@ -51,6 +51,7 @@ class logSumCoefficient(nn.Module):
         log_constant = pred[-1]
         log_diff=torch.log(torch.sum(X_value))-(log_individual+log_constant)
         print(log_diff)
+        print(log_individual+log_constant)
         return log_individual+log_constant
 
     def approximate(self,X_list):

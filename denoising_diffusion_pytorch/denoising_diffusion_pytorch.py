@@ -1052,7 +1052,7 @@ class Trainer(object):
             while self.step < self.train_num_steps:
 
                 total_loss = 0.
-
+                print(self.gradient_accumulate_every)
                 for _ in range(self.gradient_accumulate_every):
                     data = next(self.dl).to(device)
 

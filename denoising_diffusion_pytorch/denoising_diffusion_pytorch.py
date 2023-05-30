@@ -821,7 +821,7 @@ class GaussianDiffusion(nn.Module):
         coeff = logSumCoefficient("m4.pt",self.device)
         loss_coeff = coeff.approximate(loss)
         ret=loss_coeff.mean()
-        print(f'{ret=}')
+        print(f'{loss_coeff=},{ret=}')
         return ret
         #return loss.mean()
 

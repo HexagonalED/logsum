@@ -54,7 +54,9 @@ class logSumCoefficient(nn.Module):
         return log_individual+log_constant
     def predict_row(self,row):
         pred=self.model(row)
-        return torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
+        ret=torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
+        print(torch.log(torch.sum(row))-ret)
+        return
 
 
     def approximate(self,X_list):

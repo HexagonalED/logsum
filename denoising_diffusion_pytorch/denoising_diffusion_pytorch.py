@@ -54,9 +54,10 @@ class logSumCoefficient(nn.Module):
         return log_individual+log_constant
     def predict_row(self,row):
         pred=self.model(row)
-        ret=torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
-        print(torch.log(torch.sum(row))-ret)
-        return ret
+        #ret=torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
+        #print(torch.log(torch.sum(row))-ret)
+        #return ret
+        return torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
 
 
     def approximate(self,X_list):
@@ -67,7 +68,7 @@ class logSumCoefficient(nn.Module):
 #            ts=X_list[t]
 #            ret.append(self.predict(ts))
 #        return torch.tensor(ret,requires_grad=True)
-        ret= torch.stack([self.predict_row(r) for r in X_list])
+        ret=torch.stack([self.predict_row(r) for r in X_list])
         print(ret)
         return ret
 

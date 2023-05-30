@@ -56,10 +56,11 @@ class logSumCoefficient(nn.Module):
     def approximate(self,X_list):
         l = X_list.size(dim=0)
         ret = list()
+
         for t in range(l):
             ts=X_list[t]
             ret.append(self.predict(ts))
-        return torch.tensor(ret)
+        return torch.tensor(ret,requires_grad=True)
 
 
 
@@ -821,7 +822,7 @@ class GaussianDiffusion(nn.Module):
         coeff = logSumCoefficient("m4.pt",self.device)
         loss_coeff = coeff.approximate(loss)
         ret=loss_coeff.mean()
-        print(f'{loss_coeff=},{ret=}')
+        #print(f'{loss_coeff=},{ret=}')
         return ret
         #return loss.mean()
 
@@ -1048,7 +1049,7 @@ class Trainer(object):
                     data = next(self.dl).to(device)
 
                     with self.accelerator.autocast():
-                        print(data)
+                        #print(data)
                         loss = self.model(data)
                         loss = loss / self.gradient_accumulate_every
                         total_loss += loss.item()

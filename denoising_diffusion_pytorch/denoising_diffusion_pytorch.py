@@ -50,7 +50,7 @@ class logSumCoefficient(nn.Module):
         log_individual = torch.sum(torch.log(X_value) * pred[:-1])
         log_constant = pred[-1]
         log_diff=torch.log(torch.sum(X_value))-(log_individual+log_constant)
-        print(f'{pred=},{log_individual=}, {log_constant=},{log_diff=}')
+        #print(f'{pred=},{log_individual=}, {log_constant=},{log_diff=}')
         return log_individual+log_constant
 
     def approximate(self,X_list):
@@ -820,7 +820,9 @@ class GaussianDiffusion(nn.Module):
         loss = loss.reshape(-1, 4)
         coeff = logSumCoefficient("m4.pt",self.device)
         loss_coeff = coeff.approximate(loss)
-        return loss_coeff.mean()
+        ret=loss_coeff.mean()
+        print(f'{ret=}')
+        return ret
         #return loss.mean()
 
     def forward(self, img, *args, **kwargs):
@@ -1046,6 +1048,7 @@ class Trainer(object):
                     data = next(self.dl).to(device)
 
                     with self.accelerator.autocast():
+                        print(data)
                         loss = self.model(data)
                         loss = loss / self.gradient_accumulate_every
                         total_loss += loss.item()

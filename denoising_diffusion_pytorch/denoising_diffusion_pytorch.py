@@ -1051,6 +1051,7 @@ class Trainer(object):
                     with self.accelerator.autocast():
                         #print(data)
                         loss = self.model(data)
+                        print(f'{loss=}')
                         loss = loss / self.gradient_accumulate_every
                         total_loss += loss.item()
 

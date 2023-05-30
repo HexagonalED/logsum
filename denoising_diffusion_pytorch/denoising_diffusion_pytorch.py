@@ -49,15 +49,15 @@ class logSumCoefficient(nn.Module):
         pred=self.model(X_value)
         log_individual = torch.sum(torch.log(X_value) * pred[:-1])
         log_constant = pred[-1]
-        log_diff=torch.log(torch.sum(X_value))-(log_individual+log_constant)
-        #print(f'{pred=},{log_individual=}, {log_constant=},{log_diff=}')
         return log_individual+log_constant
+
     def predict_row(self,row):
         pred=self.model(row)
-        #ret=torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
-        #print(torch.log(torch.sum(row))-ret)
-        #return ret
-        return torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
+        print(row)
+        print(pred)
+        ret = torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
+        print(ret)
+        return ret
 
 
     def approximate(self,X_list):
@@ -834,7 +834,7 @@ class GaussianDiffusion(nn.Module):
         #loss_coeff = coeff.approximate(loss)
         loss_coeff = coeff.predict_row(loss)
         ret=loss_coeff.mean()
-        #print(f'{loss_coeff=},{ret=}')
+        print(f'{loss_coeff=},{ret=}')
         return ret
         #return loss.mean()
 

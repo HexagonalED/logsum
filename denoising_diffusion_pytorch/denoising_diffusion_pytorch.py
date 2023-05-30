@@ -54,7 +54,7 @@ class logSumCoefficient(nn.Module):
         return log_individual+log_constant
     def predict_row(self,row):
         pred=self.model(row)
-        return torch.sum(torch.log(row) * pred[:-1])+pred[-1]
+        return torch.sum(torch.log(row) * pred[:, :-1], dim=1) + pred[:, -1]
 
 
     def approximate(self,X_list):
@@ -828,7 +828,8 @@ class GaussianDiffusion(nn.Module):
         loss = loss * extract(self.loss_weight, t, loss.shape)
         loss = loss.reshape(-1, 4)
         coeff = logSumCoefficient("m4.pt",self.device)
-        loss_coeff = coeff.approximate(loss)
+        #loss_coeff = coeff.approximate(loss)
+        loss_coeff = coeff.predict_row(loss)
         ret=loss_coeff.mean()
         #print(f'{loss_coeff=},{ret=}')
         return ret

@@ -841,6 +841,8 @@ class GaussianDiffusion(nn.Module):
         else:
             print("inf not detected, using nn loss")
             return ret
+        print("if error")
+        return ret
         #return loss.mean()
 
     def forward(self, img, *args, **kwargs):

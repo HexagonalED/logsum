@@ -835,7 +835,10 @@ class GaussianDiffusion(nn.Module):
         loss_coeff = coeff.predict_row(loss)
         ret=loss_coeff.mean()
         print(f'{loss_coeff=},{ret=}')
-        return ret
+        if torch.isinf(ret).any() :
+            return loss.mean()
+        else:
+            return ret
         #return loss.mean()
 
     def forward(self, img, *args, **kwargs):

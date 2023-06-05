@@ -836,8 +836,10 @@ class GaussianDiffusion(nn.Module):
         ret=loss_coeff.mean()
         print(f'{loss_coeff=},{ret=}')
         if torch.isinf(ret).any() :
+            print("inf detected, using normal loss")
             return loss.mean()
         else:
+            print("inf not detected, using nn loss")
             return ret
         #return loss.mean()
 
